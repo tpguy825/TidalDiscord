@@ -161,6 +161,17 @@ namespace TidalDiscord
 					{
 						presence.Assets.LargeImageKey = url;
 						presence.Assets.LargeImageText = info.AlbumTitle;
+						presence.Buttons = [
+							new DiscordRPC.Button()
+							{
+								Label = "Listen on your streaming service",
+								Url = "https://tidal.com/browse/track/" + id + "?u"
+							},new DiscordRPC.Button()
+							{
+								Label = "Open in GitHub",
+								Url = "https://github.com/tpguy825/TidalDiscord"
+							}
+						];
 					}
 				}
 			}
