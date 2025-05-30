@@ -145,10 +145,10 @@ namespace TidalDiscord
 			string query = info.Artist + " " + info.Title;
 			if (query != prevQuery && query != " ")
 			{
-				(bool success, string id) = api.search(query);
+				(bool success, string id) = api.search(query, info.Title);
 				if (!success)
 				{
-					// MessageBox.Show(this,"Failed to search for " + query + ": " + id);
+					MessageBox.Show(this,"Failed to search for " + query + ": " + id);
 				}
 				else
 				{
@@ -165,7 +165,8 @@ namespace TidalDiscord
 				}
 			}
 			presence.Assets.SmallImageKey = "untitled";
-			presence.Assets.SmallImageText = "TidalDiscord - https://github.com/tpguy825/TidalDiscord";
+			// space so it fits nicely on the hover prompt
+			presence.Assets.SmallImageText = "TidalDiscord - github.com/ tpguy825/TidalDiscord";
 			Invoke(new Action(() =>
 			{
 				if (last != (info.Title + " - " + info.Artist + (isPaused ? " (Paused)" : "")))
@@ -295,28 +296,33 @@ namespace TidalDiscord
 
 		private class SearchResponse
 		{
-			public required IdType[] data { get; set; }
+			public required Included[] included { get; set; }
 		}
-
-		private class IdType
+		private class Included
 		{
 			public required string id { get; set; }
-			public required string type { get; set; }
+			public required SearchAttributes attributes { get; set; }
+		}
+		private class SearchAttributes
+		{
+			public required string title { get; set; }
+			public required float popularity { get; set; }
 		}
 
 		private class IdResponse
 		{
-			public required Included[] included { get; set; }
+			public required ImageIncluded[] included { get; set; }
 		}
 
-		private class Included
+		private class ImageIncluded
 		{
-			public required Attributes attributes { get; set; }
+			public required ImageAttributes attributes { get; set; }
 		}
 
-		private class Attributes
+		private class ImageAttributes
 		{
 			public required ImageLinks[] imageLinks { get; set; }
+
 		}
 
 		private class ImageLinks
@@ -376,7 +382,7 @@ namespace TidalDiscord
 			}
 		}
 
-		public (bool, string) search(string query)
+		public (bool, string) search(string query, string title)
 		{
 			if (token == null) return (false, "Not logged in");
 			if (query == "") return (false, "Query is empty");
@@ -413,8 +419,8 @@ namespace TidalDiscord
 				// get tracks[0].resource.album.imageCover from responseString
 				var res = JsonSerializer.Deserialize<SearchResponse>(responseString);
 				if (res == null) return (false, "Failed to parse response");
-				var track = res.data[0];
-
+				var track = res.included.Where(x => x.attributes.title != null && x.attributes.title.ToLower().Equals(title.ToLower())).OrderByDescending(x => x.attributes.popularity).FirstOrDefault();
+				if (track == null) return (false, "No tracks found");
 				return (true, track.id);
 			}
 			catch (Exception e)
@@ -458,7 +464,9 @@ namespace TidalDiscord
 				// get tracks[0].resource.album.imageCover from responseString
 				var res = JsonSerializer.Deserialize<IdResponse>(responseString);
 				if (res == null) return (false, "Failed to parse response");
-				var covers = res.included[0].attributes.imageLinks;
+				var options = res.included.Where(x => x.attributes.imageLinks != null && x.attributes.imageLinks.Length > 0).ToArray();
+				if (options.Length == 0) return (false, "No images found");
+				var covers = options.Where(x => x.attributes.imageLinks.Any(y => y.meta.width > 0 && y.meta.height > 0)).SelectMany(x => x.attributes.imageLinks).ToArray();
 
 				if (covers == null || covers.Length == 0) return (false, "No covers found");
 
