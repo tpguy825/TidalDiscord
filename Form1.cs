@@ -23,6 +23,7 @@ namespace TidalDiscord
 		public TidalAPI api = new();
 		public string prevQuery = "";
 		public Dictionary<string, string> env = new();
+		public string current_id = "";
 
 		public Form1()
 		{
@@ -124,7 +125,7 @@ namespace TidalDiscord
 			if (recheckpos || lastping != timeline.Position) currentpos = timeline.Position;
 
 			presence.Details = string.Format("Listening to {0} by {1}", info.Title, info.Artist);
-			presence.State = string.Format("{0}/{1}", format(currentpos), format(timeline.EndTime)) + (isPaused ? " (Paused)" : "");
+			presence.State = string.Format("{0}/{1} - https://tidal.com/browse/track/{2}/u", format(currentpos), format(timeline.EndTime), current_id) + (isPaused ? " (Paused)" : "");
 
 			Console.WriteLine(string.Format("Timer tick, {0}, {1}", presence.Details, presence.State));
 
@@ -148,7 +149,7 @@ namespace TidalDiscord
 				(bool success, string id) = api.search(query, info.Title);
 				if (!success)
 				{
-					MessageBox.Show(this,"Failed to search for " + query + ": " + id);
+					MessageBox.Show(this, "Failed to search for " + query + ": " + id);
 				}
 				else
 				{
@@ -159,14 +160,18 @@ namespace TidalDiscord
 					}
 					else
 					{
+						current_id = id;
 						presence.Assets.LargeImageKey = url;
-						presence.Assets.LargeImageText = info.AlbumTitle;
+						presence.Assets.LargeImageText = "Open in your streaming service: https://tidal.com/browse/track/" + id + "/u";
+						// presence.Buttons = [ new DiscordRPC.Button() { Label = "Open song", Url = "https://tidal.com/browse/track/" + id + "/u" } ];
+						// buttons cause presence to disappear on mobile and bug out horribly on web
 						presence.Buttons = [
 							new DiscordRPC.Button()
 							{
-								Label = "Listen on your streaming service",
+								Label = "Open song",
 								Url = "https://tidal.com/browse/track/" + id + "?u"
-							},new DiscordRPC.Button()
+							},
+							new DiscordRPC.Button()
 							{
 								Label = "Open in GitHub",
 								Url = "https://github.com/tpguy825/TidalDiscord"
@@ -414,7 +419,7 @@ namespace TidalDiscord
 				HttpClient client = new()
 				{
 					BaseAddress = new Uri(url),
-					
+
 				};
 				client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token?.access_token);
 				client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.api+json"));
